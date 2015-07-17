@@ -3,3 +3,4 @@ pkg/
 .forge-releng/
 Gemfile.lock
 vendor/
+spec/fixtures/
