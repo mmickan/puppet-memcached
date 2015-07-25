@@ -109,6 +109,12 @@ class memcached (
       logfile      => $::memcached::params::logfile,
       pidfile      => '/var/run/memcached.pid',
     }
+  } else {
+    exec { 'stop default memcache':
+      path    => '/usr/bin:/bin:/usr/sbin:/sbin',
+      command => 'kill `cat /var/run/memcached.pid`',
+      onlyif  => 'test -f /var/run/memcached.pid',
+    } -> Memcached::Instance <||>
   }
 
   file { '/etc/default/memcached':
