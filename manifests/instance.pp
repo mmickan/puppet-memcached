@@ -92,9 +92,15 @@ define memcached::instance(
   if $max_memory and !is_integer($max_memory) {
     validate_re($max_memory, '^\d+%$')
   }
-  if $item_size  { validate_integer($item_size) }
-  validate_integer($processorcount)
-  validate_integer($max_connections)
+  if $item_size and !is_integer($item_size) {
+    fail('item_size must be an integer')
+  }
+  unless is_integer($processorcount) {
+    fail('processorcount must be an integer')
+  }
+  unless is_integer($max_connections) {
+    fail('max_connections must be an integer')
+  }
   validate_bool($lock_memory)
   validate_bool($use_sasl)
   validate_bool($large_mem_pages)
