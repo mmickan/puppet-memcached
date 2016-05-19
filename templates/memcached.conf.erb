@@ -48,7 +48,7 @@ logfile <%= @logfile -%>
 <% end -%>
 
 # Run daemon as user
--u <%= @user %>
+-u <%= scope['memcached::user'] %>
 
 <% if @large_mem_pages -%>
 # Try to use large memory pages (if available)

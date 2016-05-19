@@ -18,6 +18,20 @@
 #   Boolean.  Whether or not Puppet should restart memcached instances when
 #   their configuration is changed.
 #
+# [*user_manage*]
+#   Boolean.  Whether or not Puppet should manage the user.
+#
+# [*group_manage*]
+#   Boolean.  Whether or not Puppet should manage the group.
+#
+# [*user*]
+#   String.  The name of the user to run memcached under.
+#
+# [*group*]
+#   String.  The group which will own the memcached logfile directory.  If
+#   managing the user, this will also be the primary group for that
+#   specified user.
+#
 # [*install_dev*]
 #   Boolean.  Determines whether or not the development package will be
 #   installed.
@@ -60,6 +74,10 @@ class memcached (
   $package_ensure   = 'present',
   $service_manage   = true,
   $service_restart  = true,
+  $user_manage      = true,
+  $group_manage     = true,
+  $user             = $::memcached::params::user,
+  $group            = $::memcached::params::group,
   $install_dev      = false,
   $default_instance = true,
 
@@ -68,7 +86,6 @@ class memcached (
   $item_size        = undef,
   $lock_memory      = false,
   $use_sasl         = false,
-  $user             = $::memcached::params::user,
   $large_mem_pages  = false,
   $processorcount   = $::processorcount,
   $auto_removal     = false,
@@ -100,6 +117,30 @@ class memcached (
       ensure  => $package_ensure,
       require => Package[$memcached::params::package_name]
     }
+  }
+
+  if $user_manage {
+    user { $user:
+      ensure => 'present',
+      system => true,
+      gid    => $group,
+    }
+    if $group_manage {
+      Group[$group] -> User[$user]
+    }
+  }
+  if $group_manage {
+    group { $group:
+      ensure => 'present',
+      system => true,
+    }
+  }
+
+  file { '/var/log/memcached':
+    ensure => 'directory',
+    owner  => $user,
+    group  => $group,
+    mode   => '0750',
   }
 
   if $default_instance {

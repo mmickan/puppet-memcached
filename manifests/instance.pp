@@ -37,10 +37,6 @@
 #   is a somewhat dangerous option with large caches - consult the memcached
 #   homepage for configuration suggestions.
 #
-# [*user*]
-#   The user to run this memcached instance as.  Note that this module does
-#   not create the user.
-#
 # [*large_mem_pages*]
 #   Boolean.  Try to use large memory pages (if available) for this
 #   memcached instance.
@@ -74,13 +70,12 @@ define memcached::instance(
   $tcp_port        = $name,
   $udp_port        = $name,
   $unix_socket     = undef,
-  $logfile         = "/var/log/memcached_${name}.log",
+  $logfile         = "/var/log/memcached/memcached_${name}.log",
   $pidfile         = "/var/run/memcached_${name}.pid",
   $max_memory      = $::memcached::max_memory,
   $item_size       = $::memcached::item_size,
   $lock_memory     = $::memcached::lock_memory,
   $use_sasl        = $::memcached::use_sasl,
-  $user            = $::memcached::user,
   $large_mem_pages = $::memcached::large_mem_pages,
   $processorcount  = $::memcached::processorcount,
   $auto_removal    = $::memcached::auto_removal,
@@ -144,6 +139,7 @@ define memcached::instance(
       require => [
         Package[$::memcached::params::package_name],
         File[$_config_file],
+        File['/var/log/memcached'],
       ],
     }
   }

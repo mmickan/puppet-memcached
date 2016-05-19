@@ -7,8 +7,9 @@ class memcached::params {
       $package_provider  = undef
       $dev_package_name  = 'libmemcached-dev'
       $config_tmpl       = "${module_name}/memcached.conf.erb"
-      $user              = 'nobody'
-      $logfile           = '/var/log/memcached.log'
+      $user              = 'memcached'
+      $group             = 'memcached'
+      $logfile           = '/var/log/memcached/memcached.log'
     }
     default: {
       fail("Unsupported platform: ${::osfamily}/${::operatingsystem}")
