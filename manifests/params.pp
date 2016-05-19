@@ -15,4 +15,25 @@ class memcached::params {
       fail("Unsupported platform: ${::osfamily}/${::operatingsystem}")
     }
   }
+
+  case $::operatingsystem {
+    'Ubuntu': {
+      if versioncmp($::operatingsystemrelease, '15.10') < 0 {
+        $init_style = 'debian'
+      } else {
+        $init_style = 'systemd'
+      }
+    }
+    'Debian': {
+      if versioncmp($::operatingsystemrelease, '8.0') < 0 {
+        $init_style = 'debian'
+      } else {
+        $init_style = 'systemd'
+      }
+    }
+    default: {
+      fail('Unsupported OS')
+    }
+  }
+
 }

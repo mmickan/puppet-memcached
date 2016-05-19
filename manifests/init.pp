@@ -41,6 +41,11 @@
 #   default instance is usually sufficient when only a single memcached
 #   instance is required.
 #
+# [*init_style*]
+#   String.  The init system in use.
+#   Valid values: debian, systemd (others are easy to add though!)
+#   Default: depends on operating system and version.
+#
 # See the memcached::instance defined type for an explanation of the
 # remaining parameters.
 #
@@ -80,6 +85,7 @@ class memcached (
   $group            = $::memcached::params::group,
   $install_dev      = false,
   $default_instance = true,
+  $init_style       = $::memcached::params::init_style,
 
   # defaults for per-instance settings
   $max_memory       = undef,
@@ -98,6 +104,7 @@ class memcached (
   validate_bool($service_manage)
   validate_bool($install_dev)
   validate_bool($default_instance)
+  validate_re($init_style, '^(debian|systemd)$')
 
   if $package_ensure == 'absent' {
     $service_ensure = 'stopped'
@@ -143,18 +150,49 @@ class memcached (
     mode   => '0750',
   }
 
+  if $service_manage {
+    case $::memcached::init_style {
+      'systemd': {
+        file { '/lib/systemd/system/memcached@.service':
+          content => template('memcached/memcached_systemd.erb'),
+          owner   => 'root',
+          group   => 'root',
+          mode    => '0444',
+        } ~>
+        exec { 'memcached-systemd-reload':
+          command     => 'systemctl daemon-reload',
+          path        => [ '/usr/bin', '/bin', '/usr/sbin' ],
+          refreshonly => true,
+        }
+      }
+      default: {}
+    }
+  }
+
   if $default_instance {
     memcached::instance { 'default':
       tcp_port     => 11211,
       udp_port     => 11211,
       logfile      => $::memcached::params::logfile,
-      pidfile      => '/var/run/memcached.pid',
+      pidfile      => '/var/run/memcached/memcached.pid',
     }
   } else {
+    case $::memcached::init_style {
+      'systemd': {
+        $_stop_command = 'systemctl stop memcached'
+        $_stop_check = 'systemctl status memcached'
+      }
+      default: {
+        $_stop_command = 'kill `cat /var/run/memcached/memcached.pid`'
+        $_stop_check = 'test -f /var/run/memcached/memcached.pid'
+      }
+    }
+
     exec { 'stop default memcache':
       path    => '/usr/bin:/bin:/usr/sbin:/sbin',
-      command => 'kill `cat /var/run/memcached.pid`',
-      onlyif  => 'test -f /var/run/memcached.pid',
+      command => $_stop_command,
+      onlyif  => $_stop_check,
+      require => Package[$::memcached::params::package_name],
     } -> Memcached::Instance <||>
   }
 

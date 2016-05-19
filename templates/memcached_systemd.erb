@@ -1,0 +1,11 @@
+[Unit]
+Description=memcached daemon
+After=network.target
+
+[Service]
+ExecStartPre=/bin/mkdir -p -m 0755 /run/memcached
+ExecStartPre=/bin/chown <%= @user %>:<%= @group %> /run/memcached
+ExecStart=/usr/share/memcached/scripts/systemd-memcached-wrapper /etc/memcached_%i.conf
+
+[Install]
+WantedBy=multi-user.target

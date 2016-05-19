@@ -11,4 +11,5 @@
 # Description:         Start up memcached, a high-performance memory caching daemon
 ### END INIT INFO
 
+# TODO: ensure pid directory exists and is owned by correct user
 /usr/sbin/service memcached $1 <%= @name %>

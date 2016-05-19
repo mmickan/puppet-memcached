@@ -71,7 +71,7 @@ define memcached::instance(
   $udp_port        = $name,
   $unix_socket     = undef,
   $logfile         = "/var/log/memcached/memcached_${name}.log",
-  $pidfile         = "/var/run/memcached_${name}.pid",
+  $pidfile         = "/var/run/memcached/memcached_${name}.pid",
   $max_memory      = $::memcached::max_memory,
   $item_size       = $::memcached::item_size,
   $lock_memory     = $::memcached::lock_memory,
@@ -107,36 +107,66 @@ define memcached::instance(
     fail('listen_ip must be a valid IP address')
   }
 
-  $_service_name = "memcached_${name}"
   $_config_file  = "/etc/memcached_${name}.conf"
-
-  if $::memcached::service_restart and $::memcached::service_manage {
-    $_service_notify = Service[$_service_name]
-  } else {
-    $_service_notify = undef
-  }
 
   file { $_config_file:
     owner   => 'root',
     group   => 'root',
     mode    => '0644',
     content => template($::memcached::params::config_tmpl),
-    notify  => $_service_notify,
   }
 
   if $::memcached::service_manage {
-    file { "/etc/init.d/${_service_name}":
-      ensure  => 'file',
-      content => template('memcached/memcached_init.erb'),
-      owner   => 'root',
-      group   => 'root',
-      mode    => '0755',
-    } ->
+    case $::memcached::init_style {
+      'upstart': {
+        $_service_name = "memcached_${name}"
 
-    service { $_service_name:
-      ensure  => $::memcached::service_ensure,
-      enable  => $::memcached::service_enable,
-      require => [
+        file { "/etc/init/${_service_name}.conf":
+          content => template('memcached/memcached_upstart.erb'),
+          mode    => '0444',
+          owner   => 'root',
+          group   => 'root',
+          before  => Service["memcached ${name}"],
+        }
+        file { "/etc/init.d/${_service_name}":
+          ensure => 'link',
+          target => '/lib/init/upstart-job',
+          owner  => 'root',
+          group  => 'root',
+          mode   => '0555',
+        }
+      }
+      'debian': {
+        $_service_name = "memcached_${name}"
+        file { "/etc/init.d/${_service_name}":
+          content => template('memcached/memcached_debian.erb'),
+          owner   => 'root',
+          group   => 'root',
+          mode    => '0555',
+          before  => Service["memcached ${name}"],
+        }
+      }
+      'systemd': {
+        $_service_name = "memcached@${name}"
+        Exec['memcached-systemd-reload'] -> Service["memcached ${name}"]
+      }
+      default: {
+        fail("I don't know how to create an init script for ${::memcached::init_style}")
+      }
+    }
+
+    if $::memcached::service_restart {
+      $_service_subscribe = File[$_config_file]
+    } else {
+      $_service_subscribe = undef
+    }
+
+    service { "memcached ${name}":
+      name      => $_service_name,
+      ensure    => $::memcached::service_ensure,
+      enable    => $::memcached::service_enable,
+      subscribe => $_service_subscribe,
+      require   => [
         Package[$::memcached::params::package_name],
         File[$_config_file],
         File['/var/log/memcached'],
